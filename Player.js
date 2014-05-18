@@ -42,6 +42,7 @@ Player = (function(){
         var thisPlayer = this;
 
         this.playerId = playerId; //make it public
+        this.name = 'Zak';
 
         /**
          * Receives the game state
