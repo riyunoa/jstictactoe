@@ -21,8 +21,15 @@
 
         var boardSize = gameWidth,
             players = [],
-            gameState = [[0,0,0],[0,0,0],[0,0,0]]
+            gameState = []
         ;
+
+        for (var i = 0; i < boardSize; i++){
+            gameState[i] = [];
+            for (var j = 0; j < boardSize; j++){
+                gameState[i].push(0);
+            }
+        }
 
         var initialisePlayers = function(){
 
@@ -47,11 +54,11 @@
             do {
                 attempts ++;
                 position = player.setMove(gameState);
-            }while(!moveIsValid(position) && attempts < 5); //only allow 5 failed attempts
+            }while(!moveIsValid(position) && attempts < 10); //only allow 5 failed attempts
 
             if (moveIsValid(position)){
                 gameState[position[0]][position[1]] = player.playerId;
-                return true;
+                return position;
             }
             return false;
         };
@@ -64,34 +71,100 @@
         };
 
         var printGameState = function(){
-            var a = getGameSymbol(gameState[0][0]),
-                b = getGameSymbol(gameState[1][0]),
-                c = getGameSymbol(gameState[2][0]),
-                d = getGameSymbol(gameState[0][1]),
-                e = getGameSymbol(gameState[1][1]),
-                f = getGameSymbol(gameState[2][1]),
-                g = getGameSymbol(gameState[0][2]),
-                h = getGameSymbol(gameState[1][2]),
-                i = getGameSymbol(gameState[2][2])
+
+            var out = '',
+                spacerRow = ''
             ;
-            console.log(
-                '+---+---+---+\n' +
-                '| '+a+' | '+b+' | '+c+' |\n' +
-                '+---+---+---+\n' +
-                '| '+d+' | '+e+' | '+f+' |\n' +
-                '+---+---+---+\n' +
-                '| '+g+' | '+h+' | '+i+' |\n' +
-                '+---+---+---+\n'
-            )
+            for (var x=0;x<boardSize;x++){
+
+                var values = [],
+                    spacers = []
+                ;
+                for (var y=0;y<boardSize;y++){
+                    values.push(getGameSymbol(gameState[y][x]));
+                    spacers.push('-');
+                }
+
+                spacerRow = '+-' +spacers.join('-+-')+ '-+\n';
+                out += '| ' +values.join(' | ')+ ' |\n' + spacerRow;
+
+            }
+            console.log(spacerRow + out);
         };
 
-        var gameComplete = function(){
-            return false;
+        var gameChecker = {
+
+            checkColumns : function(){
+                for (var i = 0; i < boardSize; i++){
+                    if (gameChecker.move[1] == i){ //y = i
+                        continue;
+                    }
+                    if (gameState[gameChecker.move[0]][i] !== gameChecker.id){
+                        return false; //exit early
+                    }
+                }
+
+                console.log('Win on vertical');
+                return true; //move was a winner!
+            },
+            checkRows : function(){
+                for (var i = 0; i < boardSize; i++){
+                    if (gameChecker.move[0] == i){ //x = i
+                        continue;
+                    }
+                    if (gameState[i][gameChecker.move[1]] !== gameChecker.id){
+                        return false; //exit early
+                    }
+                }
+
+                console.log('Win on horizontal');
+                return true; //move was a winner!
+            },
+            checkDiagonals : function(){
+
+                if (!(gameChecker.move[0] == gameChecker.move[1] || gameChecker.move[0] == boardSize-1 - gameChecker.move[1])){
+                    return false; //move isn't on a diagonal, exit early
+                }
+
+
+                //check top left to bottom right
+                for (var i=0; i<boardSize; i++){
+                    if (gameState[i][i] != gameChecker.id){
+                        break; //not found
+                    }
+                    if (i == boardSize - 1){ //all checks were the matched value
+                        console.log('Win on diagonal');
+                        return true; //winner found
+                    }
+                }
+
+                //check top right to bottom left
+                for (var i=0; i<boardSize; i++){
+                    if (gameState[i][boardSize-1 - i] != gameChecker.id){
+                        break; //not found
+                    }
+                    if (i == boardSize - 1){ //all checks were the matched value
+                        console.log('Win on diagonal');
+                        return true; //winner found
+                    }
+                }
+
+                return false; //no winner :(
+
+            },
+            isWinner : function(move, player){
+                this.id = player.playerId;
+                this.move = move;
+                return this.checkColumns() || this.checkRows() || this.checkDiagonals();
+            }
         };
 
         var playGame = function(){
             var maxMoves = boardSize * boardSize, //safety net in case of runaway loop
-                moveCount = 0;
+                moveCount = 0,
+                lastMove,
+                winner = false
+            ;
 
             do{
                 for(var playerIndex in players){
@@ -101,21 +174,35 @@
 
                     var thisPlayer = players[playerIndex];
 
-                    if (!setMove(thisPlayer)){
+                    lastMove = setMove(thisPlayer);
+
+                    if (!lastMove){
                         return {
                             success: false,
-                            reason: thisPlayer.name + " failed to post a valid move"
+                            message: "Player " + thisPlayer.playerId+ " (" + thisPlayer.name + ") failed to post a valid move"
                         }
                     }
 
-                    console.clear();
-                    console.log('game state', gameState);
-                    console.log('move count', moveCount);
-                    printGameState();
+                    winner = gameChecker.isWinner(lastMove, thisPlayer);
+
+
+                    if (winner){
+                        return {
+                            success: true,
+                            winner: thisPlayer,
+                            message: "Winner found: Player " + thisPlayer.playerId+" (" +  thisPlayer.name+") ["+getGameSymbol(thisPlayer.playerId)+"]"
+                        }
+                    }
+
+
                 }
-            }while(!gameComplete() && moveCount <= maxMoves);
+            }while(moveCount <= maxMoves); //escape condition
 
-
+            return {
+                success: true,
+                winner: false,
+                message: "Game is a draw"
+            }
 
         };
 
@@ -125,9 +212,18 @@
 
             var result = playGame();
 
+            printGameState();
+
             if (!result.success){
-                console.error("Game failed: " + result.reason);
+                console.error("Game failed: " + result.message);
+            }else{
+                console.log(result.message);
             }
+
+            if (result.success && result.winner){
+                return result.winner;
+            }
+            return false; //a draw
 
         }
 
