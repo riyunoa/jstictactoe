@@ -3,9 +3,30 @@
     <head>
         <title>Javascript Tic Tac Toe Challenge</title>
 
-        <script type="text/javascript" src="TicTacToeGame.js"></script>
-        <script type="text/javascript" src="Player.js"></script>
-        <script type="text/javascript" src="GameRunner.js"></script>
+
+        <script type="text/javascript" src="Player.class.js"></script>
+        <!-- All player classes to be defined here -->
+        <script type="text/javascript" src="PlayerSteve.class.js"></script>
+        <!-- End all player classes -->
+        <script type="text/javascript" src="TicTacToeGame.class.js"></script>
+        <script type="text/javascript" src="TournamentRunner.class.js"></script>
+
+        <script type="text/javascript">
+
+            var players = [
+                Player,
+                Steve,
+                Player,
+                Player
+            ];
+
+            var tournament = new TournamentRunner(TicTacToeGame, players);
+
+            tournament.run();
+
+
+
+        </script>
 
     </head>
 </html>

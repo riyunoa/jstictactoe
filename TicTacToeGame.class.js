@@ -17,28 +17,30 @@
      * @param gameWidth
      * @constructor
      */
-    this.TicTacToeGame = function (playerObjects, gameWidth){
+    this.TicTacToeGame = function (gameWidth){
 
         var boardSize = gameWidth,
             players = [],
             gameState = []
         ;
 
-        for (var i = 0; i < boardSize; i++){
-            gameState[i] = [];
-            for (var j = 0; j < boardSize; j++){
-                gameState[i].push(0);
+        var reset = function(){
+            for (var i = 0; i < boardSize; i++){
+                gameState[i] = [];
+                for (var j = 0; j < boardSize; j++){
+                    gameState[i].push(0);
+                }
             }
-        }
+        };
 
-        var initialisePlayers = function(){
+
+        var initialisePlayers = function(playerObjects){
 
             for(var playerId = 0; playerId<playerObjects.length; playerId++){
                 NewPlayer = playerObjects[playerId];
 
-                players.push(
-                    new NewPlayer(playerId + 1, boardSize)
-                ); //initialise the player
+                NewPlayer.initialise(boardSize); //initialise the player
+                players.push(NewPlayer);
             }
 
         };
@@ -54,10 +56,10 @@
             do {
                 attempts ++;
                 position = player.setMove(gameState);
-            }while(!moveIsValid(position) && attempts < 10); //only allow 5 failed attempts
+            }while(!moveIsValid(position) && attempts < 100); //only allow 5 failed attempts
 
             if (moveIsValid(position)){
-                gameState[position[0]][position[1]] = player.playerId;
+                gameState[position[0]][position[1]] = player.getId();
                 return position;
             }
             return false;
@@ -65,7 +67,7 @@
 
         var getGameSymbol = function(id){
 
-            var symbolMap = ' XO?';
+            var symbolMap = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ?';
 
             return (id > symbolMap.length) ? symbolMap[symbolMap.length-1] : symbolMap[id];
         };
@@ -153,7 +155,7 @@
 
             },
             isWinner : function(move, player){
-                this.id = player.playerId;
+                this.id = player.getId();
                 this.move = move;
                 return this.checkColumns() || this.checkRows() || this.checkDiagonals();
             }
@@ -163,8 +165,11 @@
             var maxMoves = boardSize * boardSize, //safety net in case of runaway loop
                 moveCount = 0,
                 lastMove,
+                lastPlayer,
                 winner = false
             ;
+
+            reset();
 
             do{
                 for(var playerIndex in players){
@@ -179,7 +184,8 @@
                     if (!lastMove){
                         return {
                             success: false,
-                            message: "Player " + thisPlayer.playerId+ " (" + thisPlayer.name + ") failed to post a valid move"
+                            loser: thisPlayer.getId(),
+                            message: "Player " + thisPlayer.getId()+ " (" + thisPlayer.getName() + ") failed to post a valid move"
                         }
                     }
 
@@ -189,10 +195,13 @@
                     if (winner){
                         return {
                             success: true,
-                            winner: thisPlayer,
-                            message: "Winner found: Player " + thisPlayer.playerId+" (" +  thisPlayer.name+") ["+getGameSymbol(thisPlayer.playerId)+"]"
+                            winner: thisPlayer.getId(),
+                            loser: lastPlayer.getId(), //this should be refactored to make the game two player ONLY
+                            message: "Winner found: Player " + thisPlayer.getId()+" (" +  thisPlayer.getName()+") ["+getGameSymbol(thisPlayer.getId())+"]"
                         }
                     }
+
+                    lastPlayer = thisPlayer;
 
 
                 }
@@ -200,30 +209,24 @@
 
             return {
                 success: true,
-                winner: false,
+                winner: null,
+                draw: true,
                 message: "Game is a draw"
             }
 
         };
 
-        this.run = function(){
+        this.run = function(players){
 
-            initialisePlayers();
+            initialisePlayers(players);
 
             var result = playGame();
 
             printGameState();
 
-            if (!result.success){
-                console.error("Game failed: " + result.message);
-            }else{
-                console.log(result.message);
-            }
+            reset();
 
-            if (result.success && result.winner){
-                return result.winner;
-            }
-            return false; //a draw
+            return result;
 
         }
 

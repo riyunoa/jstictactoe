@@ -37,12 +37,20 @@ Player = (function(){
      * @param playerNumber
      * @param boardSize
      */
-    return function(playerId, boardSize){
+    return function(playerId){
 
-        var thisPlayer = this;
-
-        this.playerId = playerId; //make it public
-        this.name = 'Zak';
+        //set defaults
+        var boardSize = 3,
+            id = playerId,
+            name = 'Default Player'
+        ;
+        /**
+         * Initialise the player with game specific attributes
+         * @param gameSize
+         */
+        this.initialise = function(gameSize){
+            boardSize = gameSize;
+        };
 
         /**
          * Receives the game state
@@ -56,6 +64,22 @@ Player = (function(){
             ;
             return [x, y];
 
+        };
+
+        /**
+         * Get private name variable (stops external editing)
+         * @returns {string}
+         */
+        this.getName = function(){
+            return name;
+        };
+
+        /**
+         * Get the id number of the player
+         * @returns {number}
+         */
+        this.getId = function(){
+            return id;
         };
 
     };
