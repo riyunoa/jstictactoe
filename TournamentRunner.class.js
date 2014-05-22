@@ -62,10 +62,10 @@ TournamentRunner = (function(){
             logArgs.push.apply(logArgs, [
                 padTrimString(i+1, 2, ' ', true),
                 padTrimString(playerRef.player.getName(), 10, ' ', false),
-                padTrimString(playerRef.seedingRound.wins, 3, ' ', true),
-                padTrimString(playerRef.seedingRound.draws, 3, ' ', true),
-                padTrimString(playerRef.seedingRound.losses, 3, ' ', true),
-                padTrimString(playerRef.seedingRound.score, 3, ' ', true)
+                padTrimString(playerRef.seedingRound[0].wins, 3, ' ', true),
+                padTrimString(playerRef.seedingRound[0].draws, 3, ' ', true),
+                padTrimString(playerRef.seedingRound[0].losses, 3, ' ', true),
+                padTrimString(playerRef.seedingRound[0].score, 3, ' ', true)
             ]);
 
             seedingTemplate +=
@@ -202,7 +202,7 @@ TournamentRunner = (function(){
 
         var sortPlayersForSeeding = function(players, seedingCount){
             var orderedPlayers = players.sort(function(a, b){
-                return b.seedingRound.score - a.seedingRound.score;
+                return b.seedingRound[0].score - a.seedingRound[0].score;
             });
 
             if  (orderedPlayers.length > seedingCount) {
@@ -232,7 +232,7 @@ TournamentRunner = (function(){
             }
         };
 
-        var resetPlayerScores = function(players, roundName, roundId){
+        var initialisePlayerScores = function(players, roundName, roundId){
             for (var playerId=0; playerId<players.length;playerId++){
 
                 var player = players[playerId];
@@ -254,8 +254,6 @@ TournamentRunner = (function(){
         var runPlayerMatch = function(player1, player2, roundName, roundId, matchCount){
 
             var fixture = player1.player.getName() + " v " + player2.player.getName();
-
-            resetPlayerScores([player1, player2], roundName, roundId);
 
             console.groupCollapsed(fixture);
 
@@ -298,56 +296,21 @@ TournamentRunner = (function(){
 
             var rounds = generateRoundRobin(playerCount);
 
+            initialisePlayerScores(tournamentPlayers, 'seedingRound', 0); //initialise scores
             for (var i=0; i<rounds.length; i++){
 
                 var player1 = tournamentPlayers[rounds[i][0]],
-                    player2 = tournamentPlayers[rounds[i][1]],
-                    fixture = player1.player.getName() + " v " + player2.player.getName()
+                    player2 = tournamentPlayers[rounds[i][1]]
                 ;
 
-                console.groupCollapsed(fixture);
-
-                for (var gameId=0; gameId<10; gameId++){
-
-                    var game = new GameClass(3);
-
-                    //switch player 1 position every second game, as tic tac toe is biased to the first player
-                    var playerArray = (gameId % 2) ? [player1.player, player2.player] : [player2.player, player1.player];
-
-                    var result = game.run(playerArray);
-
-                    if (result.winner){
-                        if (result.winner == player1.player.getId())   player1.seedingRound.wins++;
-                        if (result.winner == player2.player.getId())   player2.seedingRound.wins++;
-                    }
-
-                    if (result.loser){
-                        if (result.loser == player1.player.getId())   player1.seedingRound.losses++;
-                        if (result.loser == player2.player.getId())   player2.seedingRound.losses++;
-                    }
-
-                    if (result.draw === true){
-                        player1.seedingRound.draws ++;
-                        player2.seedingRound.draws ++;
-                    }
-
-                    player1.seedingRound.games ++;
-                    player2.seedingRound.games ++;
-
-                    var reportString = 'Game ran: '+ fixture + ", result was "+ result.message;
-                    result.success ? console.log(reportString) : console.error(reportString);
-                }
-
-                console.groupEnd();
-
+                runPlayerMatch(player1, player2, 'seedingRound', 0, 2);
 
             }
 
             for (var playerId = 0; playerId<tournamentPlayers.length; playerId++){
 
                 var player = tournamentPlayers[playerId];
-                player.seedingRound.score = (player.seedingRound.wins * 3) + player.seedingRound.draws - player.seedingRound.losses; //win = 3, draw = 1, loss = -1
-
+                calculatePlayerScores([player], 'seedingRound', 0);
             }
 
             console.log("ELIMINATION ROUND");
@@ -373,8 +336,10 @@ TournamentRunner = (function(){
                         continue;
                     }
 
-                    runPlayerMatch(player1, player2, 'eliminationRound', roundId, 20);
+                    initialisePlayerScores([player1, player2], 'eliminationRound', roundId);
+                    runPlayerMatch(player1, player2, 'eliminationRound', roundId, 2);
                     calculatePlayerScores([player1, player2], 'eliminationRound', roundId);
+
 
                     if (player1.eliminationRound[roundId].score > player2.eliminationRound[roundId].score){
                         round[roundId+1].push(player1); //winner
