@@ -303,7 +303,7 @@ TournamentRunner = (function(){
                     player2 = tournamentPlayers[rounds[i][1]]
                 ;
 
-                runPlayerMatch(player1, player2, 'seedingRound', 0, 2);
+                runPlayerMatch(player1, player2, 'seedingRound', 0, 20);
 
             }
 
@@ -337,7 +337,7 @@ TournamentRunner = (function(){
                     }
 
                     initialisePlayerScores([player1, player2], 'eliminationRound', roundId);
-                    runPlayerMatch(player1, player2, 'eliminationRound', roundId, 2);
+                    runPlayerMatch(player1, player2, 'eliminationRound', roundId, 100);
                     calculatePlayerScores([player1, player2], 'eliminationRound', roundId);
 
 
