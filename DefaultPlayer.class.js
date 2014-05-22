@@ -22,10 +22,10 @@ represents
 +---+---+---+
 | X | X | O |
 +---+---+---+
-Note: 0 is no move, numbers 1 - n are the player ids
+Note: 0 is no move, numbers 1 & 2 are the player ids
 */
 
-Player = (function(){
+var DefaultPlayer = (function(){
 
     //Private helper functions
     var randBetween = function(min, max){
@@ -71,7 +71,37 @@ Player = (function(){
          * @returns {string}
          */
         this.getName = function(){
-            return name;
+
+            return [
+                'Alex',
+                'Brian',
+                'Charles',
+                'Doug',
+                'Eric',
+                'Fred',
+                'Gary',
+                'Henry',
+                'Isaac',
+                'Jake',
+                'Ken',
+                'Liam',
+                'Mike',
+                'Nick',
+                'Oscar',
+                'Pete',
+                'Quentin',
+                'Ron',
+                'Stuart',
+                'Tim',
+                'Ummmm',
+                'Vince',
+                'Walter',
+                'Xavier',
+                'Yuri',
+                'Zane'
+            ][id-1];
+
+//            return name;
         };
 
         /**

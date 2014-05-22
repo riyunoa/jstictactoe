@@ -11,6 +11,17 @@
 ;
 (function(){
 
+    var getInititalGameBoard = function(size){
+        var gameBoard = [];
+        for (var i = 0; i < size; i++){
+            gameBoard[i] = [];
+            for (var j = 0; j < size; j++){
+                gameBoard[i].push(0);
+            }
+        }
+        return gameBoard;
+    };
+
     /**
      *
      * @param playerObjects
@@ -19,44 +30,65 @@
      */
     this.TicTacToeGame = function (gameWidth){
 
+        // Set defaults
         var boardSize = gameWidth,
             players = [],
-            gameState = []
+            gameState = getInititalGameBoard(gameWidth)
         ;
-
-        var reset = function(){
-            for (var i = 0; i < boardSize; i++){
-                gameState[i] = [];
-                for (var j = 0; j < boardSize; j++){
-                    gameState[i].push(0);
-                }
-            }
-        };
-
 
         var initialisePlayers = function(playerObjects){
 
+            if (playerObjects.length !== 2){
+                throw "There can only be 2 players for this game";
+            }
+
             for(var playerId = 0; playerId<playerObjects.length; playerId++){
                 NewPlayer = playerObjects[playerId];
-
                 NewPlayer.initialise(boardSize); //initialise the player
                 players.push(NewPlayer);
             }
 
+
+        };
+
+        var validatePositionIndex = function(index){
+            return (typeof index == 'number'
+                && index >= 0
+                && index < gameWidth
+            );
         };
 
         var moveIsValid = function(position){
-            return gameState[position[0]][position[1]] === 0; //field is empty
+            if (typeof position !== 'object' || position.length !== 2){
+                return false;
+            }
+            var x = position[0],
+                y = position[1]
+            ;
+
+            if (!validatePositionIndex(x) || !validatePositionIndex(y)){
+                return false;
+            }
+
+            return gameState[x][y] === 0; //field is empty
         };
 
         var setMove = function(player){
             var position,
-                attempts = 0;
+                attempts = 0
+                timestamp = new Date().getTime()
+            ;
 
             do {
                 attempts ++;
                 position = player.setMove(gameState);
-            }while(!moveIsValid(position) && attempts < 100); //only allow 5 failed attempts
+            }while(!moveIsValid(position) && attempts < 10); //only allow 10 failed attempts
+
+            var duration = new Date().getTime() - timestamp;
+            if (duration > 50){ //allow 50ms to calculate move
+                //player is too damn slow
+                throw gameResult(false, null, player, false, "Player "+player.getId()+" ("+player.getName()+") took too long ("+duration+"ms) to calculate a move. Aborting");
+            }
 
             if (moveIsValid(position)){
                 gameState[position[0]][position[1]] = player.getId();
@@ -94,6 +126,19 @@
             console.log(spacerRow + out);
         };
 
+        var gameResult = function(success, winner, loser, draw, message){
+            var winnerId = !!winner ? winner.getId() : null;
+            var loserId = !!loser ? loser.getId() : null;
+
+            return {
+                success: success,
+                winner: winnerId,
+                loser: loserId,
+                draw: draw,
+                message: message
+            };
+        };
+
         var gameChecker = {
 
             checkColumns : function(){
@@ -105,8 +150,6 @@
                         return false; //exit early
                     }
                 }
-
-                console.log('Win on vertical');
                 return true; //move was a winner!
             },
             checkRows : function(){
@@ -118,8 +161,6 @@
                         return false; //exit early
                     }
                 }
-
-                console.log('Win on horizontal');
                 return true; //move was a winner!
             },
             checkDiagonals : function(){
@@ -135,7 +176,6 @@
                         break; //not found
                     }
                     if (i == boardSize - 1){ //all checks were the matched value
-                        console.log('Win on diagonal');
                         return true; //winner found
                     }
                 }
@@ -146,7 +186,6 @@
                         break; //not found
                     }
                     if (i == boardSize - 1){ //all checks were the matched value
-                        console.log('Win on diagonal');
                         return true; //winner found
                     }
                 }
@@ -164,55 +203,36 @@
         var playGame = function(){
             var maxMoves = boardSize * boardSize, //safety net in case of runaway loop
                 moveCount = 0,
-                lastMove,
-                lastPlayer,
                 winner = false
             ;
 
-            reset();
-
             do{
-                for(var playerIndex in players){
+                for(var playerIndex = 0; playerIndex<players.length; playerIndex++){
 
                     moveCount ++;
                     if (moveCount > maxMoves) break;
 
                     var thisPlayer = players[playerIndex];
 
-                    lastMove = setMove(thisPlayer);
+                    var move = setMove(thisPlayer);
 
-                    if (!lastMove){
-                        return {
-                            success: false,
-                            loser: thisPlayer.getId(),
-                            message: "Player " + thisPlayer.getId()+ " (" + thisPlayer.getName() + ") failed to post a valid move"
-                        }
+                    if (!move){
+                        throw gameResult(false, null, thisPlayer, false, "Player " + thisPlayer.getId()+ " (" + thisPlayer.getName() + ") failed to post a valid move");
                     }
 
-                    winner = gameChecker.isWinner(lastMove, thisPlayer);
-
+                    winner = gameChecker.isWinner(move, thisPlayer);
 
                     if (winner){
-                        return {
-                            success: true,
-                            winner: thisPlayer.getId(),
-                            loser: lastPlayer.getId(), //this should be refactored to make the game two player ONLY
-                            message: "Winner found: Player " + thisPlayer.getId()+" (" +  thisPlayer.getName()+") ["+getGameSymbol(thisPlayer.getId())+"]"
-                        }
+                        return gameResult(true, thisPlayer, players[Math.abs(playerIndex-1)], false, "Winner found: Player " + thisPlayer.getId()+" (" +  thisPlayer.getName()+") ["+getGameSymbol(thisPlayer.getId())+"]");
                     }
 
-                    lastPlayer = thisPlayer;
+                    thisPlayer = null;
 
 
                 }
             }while(moveCount <= maxMoves); //escape condition
 
-            return {
-                success: true,
-                winner: null,
-                draw: true,
-                message: "Game is a draw"
-            }
+            return gameResult(true, null, null, true, "Game is a draw");
 
         };
 
@@ -220,14 +240,17 @@
 
             initialisePlayers(players);
 
-            var result = playGame();
+            try {
+
+                var result = playGame();
+
+            }catch(e){ //invalid game
+                return e; //exception is structured as a valid gameResult object
+            }
 
             printGameState();
 
-            reset();
-
             return result;
-
         }
 
     }; //end TicTacToeGame Constructor
