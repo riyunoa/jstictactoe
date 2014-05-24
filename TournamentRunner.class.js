@@ -77,55 +77,54 @@ TournamentRunner = (function(){
         logArgs.unshift(seedingTemplate); //push the template to the front
 
         console.log.apply(console, logArgs);
-        
 
         var tournamentTemplate =
             "\nSeed\n"+
             "1 | %s\n" +
             "----------------\\\n" +
-            "3 | %s  | %s\n" +
+            "16| %s  | %s\n" +
             "                |\n" +
             "                |--------------\\\n" +
             "                |              |\n" +
-            "5 | %s  | %s   |\n" +
+            "8 | %s  | %s   |\n" +
             "----------------/              |\n" +
-            "7 | %s                 | %s\n" +
+            "9 | %s                 | %s\n" +
             "                               |\n" +
             "                               |------------------\\\n" +
             "                               |                  |\n" +
-            "9 | %s                 | %s       |\n" +
+            "4 | %s                 | %s       |\n" +
             "----------------\\              |                  |\n" +
-            "11| %s  | %s   |                  |\n" +
+            "13| %s  | %s   |                  |\n" +
             "                |              |                  |\n" +
             "                |--------------/                  |\n" +
             "                |                                 |\n" +
-            "13| %s  | %s                      |\n" +
+            "5 | %s  | %s                      |\n" +
             "----------------/                                 |\n" +
-            "15| %s                                    | %s\n" +
+            "12| %s                                    | %s\n" +
             "                                                  |\n" +
             "                                                  |----------------------- %s\n" +
             "                                                  |\n" +
-            "16| %s                                    | %s\n" +
+            "2 | %s                                    | %s\n" +
             "----------------\\                                 |\n" +
-            "14| %s  | %s                      |\n" +
+            "15| %s  | %s                      |\n" +
             "                |                                 |\n" +
             "                |--------------\\                  |\n" +
             "                |              |                  |\n" +
-            "12| %s  | %s   |                  |\n" +
+            "7 | %s  | %s   |                  |\n" +
             "----------------/              |                  |\n" +
             "10| %s                 | %s       |\n" +
             "                               |                  |\n" +
             "                               |------------------/\n" +
             "                               |\n" +
-            "8 | %s                 | %s\n" +
+            "3 | %s                 | %s\n" +
             "----------------\\              |\n" +
-            "6 | %s  | %s   |\n" +
+            "14| %s  | %s   |\n" +
             "                |              |\n" +
             "                |--------------/\n" +
             "                |\n" +
-            "4 | %s  | %s\n" +
+            "6 | %s  | %s\n" +
             "----------------/\n" +
-            "2 | %s\n" +
+            "11 | %s\n" +
             "\n"
             ;
 
@@ -149,7 +148,7 @@ TournamentRunner = (function(){
             formatPlayerDisplay(eliminationResults[0][8], 0),
             formatPlayerDisplay(eliminationResults[3][1], 3),
             formatPlayerDisplay(eliminationResults[0][9], 0),
-            formatPlayerDisplay(eliminationResults[1][4], 2),
+            formatPlayerDisplay(eliminationResults[1][4], 1),
             formatPlayerDisplay(eliminationResults[0][10], 0),
             formatPlayerDisplay(eliminationResults[1][5], 1),
             formatPlayerDisplay(eliminationResults[0][11], 0),
@@ -164,24 +163,16 @@ TournamentRunner = (function(){
         );
     };
 
-    return function(GameClass, players){
+    return function(GameClass, players, CONFIG){
 
         var playerCount = players.length,
             tournamentPlayers = []
         ;
 
+        // initialise players
         for (var i=0; i<playerCount; i++){
-
-            var newPlayer = new players[i](i+1);
             tournamentPlayers.push({
-                player: newPlayer,
-                seedingRound: {
-                    wins: 0,
-                    losses: 0,
-                    draws: 0,
-                    score: 0,
-                    games: 0
-                }
+                player: new players[i](i+1)
             });
         }
 
@@ -200,6 +191,50 @@ TournamentRunner = (function(){
             return rounds;
         };
 
+        var generateElimination = function(playerCount){
+
+            var getRound = function(playersInRound, matches){
+                var newMatches = [];
+                matches.forEach(function(playerOrMatch){
+                    if (typeof playerOrMatch == 'number'){
+                        newMatches.push([playerOrMatch, playersInRound+1-playerOrMatch]);
+                    }else{
+                        newMatches.push(getRound(playersInRound, playerOrMatch));
+                    }
+
+                });
+                return newMatches;
+            };
+
+            var flattenList = function(matches, playerList){
+                matches.forEach(function(playerOrMatch){
+                    if (typeof playerOrMatch =='number'){
+                        playerList.push(playerOrMatch);
+                    }else{
+                        flattenList(playerOrMatch, playerList);
+                    }
+                });
+                return playerList;
+            };
+
+            var roundCount = Math.log(playerCount) / Math.log(2); //get log2(playerCount)
+            if (Math.floor(roundCount) !== roundCount){
+                console.error("Player count must be a power of 2");
+            }
+            var playersInRound = 1, //winning player to work backwards from
+                matches = [1]
+            ;
+            while(playersInRound != playerCount){
+                playersInRound *= 2;
+                matches = getRound(playersInRound, matches);
+            }
+
+            return flattenList(matches, []);
+
+        };
+
+
+
         var sortPlayersForSeeding = function(players, seedingCount){
             var orderedPlayers = players.sort(function(a, b){
                 return b.seedingRound[0].score - a.seedingRound[0].score;
@@ -213,22 +248,27 @@ TournamentRunner = (function(){
                 orderedPlayers.push(null); //pad it out
             }
 
-            var topHalf = orderedPlayers.slice(0, seedingCount/2); //slice out the top
-            var bottomHalf = orderedPlayers.slice(seedingCount/2, seedingCount).reverse(); //the leftovers
-            var seededPlayers = new Array(seedingCount); //null filled array
+            var seededPlayers = [];
 
-            for (var i = 0, j=seedingCount- 1, playerId = 0; i<seedingCount/2; i++, j--, playerId+=2){
-                seededPlayers[i] = orderedPlayers[playerId];
-                seededPlayers[j] = orderedPlayers[playerId+1];
+            var seedOrder = generateElimination(seedingCount);
+            for (var i = 0; i<seedOrder.length; i++){
+                seededPlayers[i] = orderedPlayers[seedOrder[i] - 1];
             }
-
 
             return seededPlayers;
         };
 
         var calculatePlayerScores = function(players, roundName, roundId){
+            var win = 3,
+                draw = 1,
+                loss = -1
+            ;
             for (var playerId=0; playerId<players.length;playerId++){
-                players[playerId][roundName][roundId].score = (players[playerId][roundName][roundId].wins * 3) + players[playerId][roundName][roundId].draws - players[playerId][roundName][roundId].losses; //win = 3, draw = 1, loss = -1
+                var player = players[playerId][roundName][roundId];
+                player.score =
+                    (player.wins * win) +
+                    (player.draws * draw ) +
+                    (player.losses * loss);
             }
         };
 
@@ -296,6 +336,8 @@ TournamentRunner = (function(){
 
             var rounds = generateRoundRobin(playerCount);
 
+            console.groupCollapsed("SEEDING ROUND");
+
             initialisePlayerScores(tournamentPlayers, 'seedingRound', 0); //initialise scores
             for (var i=0; i<rounds.length; i++){
 
@@ -303,17 +345,15 @@ TournamentRunner = (function(){
                     player2 = tournamentPlayers[rounds[i][1]]
                 ;
 
-                runPlayerMatch(player1, player2, 'seedingRound', 0, 20);
+                runPlayerMatch(player1, player2, 'seedingRound', 0, CONFIG.gameCounts.seeding);
 
             }
 
-            for (var playerId = 0; playerId<tournamentPlayers.length; playerId++){
+            calculatePlayerScores(tournamentPlayers, 'seedingRound', 0);
 
-                var player = tournamentPlayers[playerId];
-                calculatePlayerScores([player], 'seedingRound', 0);
-            }
+            console.groupEnd();
 
-            console.log("ELIMINATION ROUND");
+            console.groupCollapsed("ELIMINATION ROUND");
 
             var playersSeeded = sortPlayersForSeeding(tournamentPlayers, 16);
 
@@ -336,19 +376,34 @@ TournamentRunner = (function(){
                         continue;
                     }
 
-                    initialisePlayerScores([player1, player2], 'eliminationRound', roundId);
-                    runPlayerMatch(player1, player2, 'eliminationRound', roundId, 100);
-                    calculatePlayerScores([player1, player2], 'eliminationRound', roundId);
+                    var tieBreakerCount = 0,
+                        roundCount = CONFIG.gameCounts.elimination,
+                        winner = null;
+                    do {
 
+                        initialisePlayerScores([player1, player2], 'eliminationRound', roundId);
+                        runPlayerMatch(player1, player2, 'eliminationRound', roundId, roundCount);
+                        calculatePlayerScores([player1, player2], 'eliminationRound', roundId);
 
-                    if (player1.eliminationRound[roundId].score > player2.eliminationRound[roundId].score){
-                        round[roundId+1].push(player1); //winner
-                    }else{
-                        round[roundId+1].push(player2); //winner
-                    }
+                        if (player1.eliminationRound[roundId].score > player2.eliminationRound[roundId].score){
+                            winner = player1;
+                            break;
+                        }else if (player1.eliminationRound[roundId].score < player2.eliminationRound[roundId].score){
+                            winner = player2;
+                            break;
+                        }
+
+                        roundCount = CONFIG.gameCounts.tieBreaker; //only do 2 rounds for tiebreakers
+                        tieBreakerCount++;
+                    }while(tieBreakerCount<CONFIG.tieBreakerRounds);
+
+                    round[roundId+1].push(winner); //winner could be null if tiebreaker round count exceeded
+
                 }
 
             }
+
+            console.groupEnd();
 
             printTournamentBoard(tournamentPlayers, round);
 

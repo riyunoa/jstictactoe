@@ -40,9 +40,17 @@
                 DefaultPlayer
             ];
 
-            var tournament = new TournamentRunner(TicTacToeGame, players);
+            var tournament = new TournamentRunner(TicTacToeGame, players, {
+                gameCounts: {
+                    seeding: 20,
+                    elimination: 100,
+                    tieBreaker: 2
+                },
+                tieBreakerRounds: 50
+            });
 
             tournament.run();
+//            tournament.test();
 
 
 
