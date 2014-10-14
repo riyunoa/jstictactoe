@@ -79,6 +79,9 @@
                 timestamp = new Date().getTime()
             ;
 
+            // let the player make a move. check if it's valid, allow 10 failed attempts
+            // valid: must be within the grid bounds
+            // if the player takes too long, disqualify
             do {
                 attempts ++;
                 position = player.setMove(gameState);
@@ -90,6 +93,7 @@
                 throw gameResult(false, null, player, false, "Player "+player.getId()+" ("+player.getName()+") took too long ("+duration+"ms) to calculate a move. Aborting");
             }
 
+            // set the position in the grid to the player ID.
             if (moveIsValid(position)){
                 gameState[position[0]][position[1]] = player.getId();
                 return position;
@@ -236,6 +240,7 @@
 
         };
 
+        //run the game
         this.run = function(players){
 
             initialisePlayers(players);
